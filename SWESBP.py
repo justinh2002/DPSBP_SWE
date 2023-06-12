@@ -139,18 +139,47 @@ class acoustic_sbp:
                 pp = (flux_2_n - f2_data_n) #*0
 
         if flux_type == 'linear':
-            flux_1_0 = Ubar*v0 + g * p0 - (Ubar*V0 + g*P0) #  du/dt
-            flux_2_0 =  Ubar*p0 + H * v0  - ( Ubar*P0 + H*V0) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
+            flux_1_0 = Ubar*v0 + g * p0 - (Ubar*V0 + g*P0) - (1-forcing)*(Ubar*U_data[0] + g*P_data[0]) #  du/dt
+            flux_2_0 =  Ubar*p0 + H * v0  - ( Ubar*P0 + H*V0) - (1-forcing)*(Ubar*P_data[0] + H*U_data[0]) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
             
-            mv = flux_1_0  * 0
-            mp = flux_2_0 #* 0 
+            if bc_type_0 == 'mass flux': 
+                mv = flux_1_0 * 0
+                mp = flux_2_0 #*0
+                
+            if bc_type_0 == 'energy flux': 
+                mv = flux_1_0 #* 0
+                mp = flux_2_0 * 0
+                
+            if bc_type_0 == 'transmissive': 
+                
+                f2_data_0 =  -np.sqrt(H/g)*flux_1_0
+                f1_data_0 =  -np.sqrt(g/H)*flux_2_0
+                mv = (flux_1_0- f1_data_0)* 0
+                mp = flux_2_0-f2_data_0
+            #mv = flux_1_0  * 0
+            #mp = flux_2_0 #* 0 
             
           # Ubar*h + H*v 
-            flux_1_n =   Ubar*vn + g * pn - (Ubar*Vn + g*Pn)
-            flux_2_n =   Ubar*pn + H * vn  - ( Ubar*Pn + H*Vn)#Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
+            flux_1_n =   Ubar*vn + g * pn - (Ubar*Vn + g*Pn) - (1-forcing)*(Ubar*U_data[-1] + g*P_data[-1])
+            flux_2_n =   Ubar*pn + H * vn  - (Ubar*Pn + H*Vn) - (1-forcing)*(Ubar*P_data[-1] + H*U_data[-1])#Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
             
-            pv = flux_1_n * 0
-            pp = flux_2_n #* 0 #* 0 
+            if bc_type_N == 'mass flux':
+                pv = flux_1_n  * 0
+                pp = flux_2_n #*0
+                
+            if bc_type_N == 'energy flux':
+                pv = flux_1_n # * 0
+                pp = flux_2_n *0
+                
+            if bc_type_N == 'transmissive':
+                
+                f2_data_n =  np.sqrt(H/g)*flux_1_n
+                f1_data_n =  np.sqrt(g/H)*flux_2_n
+            
+                pv = (flux_1_n - f1_data_n ) * 0
+                pp = (flux_2_n - f2_data_n) #*0
+            #pv = flux_1_n * 0
+            #pp = flux_2_n #* 0 #* 0 
              
 
 
