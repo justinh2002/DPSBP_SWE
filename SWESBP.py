@@ -28,7 +28,7 @@ class acoustic_sbp:
         if order==6:
             h11[:] = (13613.0/43200.0)*dx
         
-    def impose_bc(self,hv, hp, v, p, rho, K, nx, dx, order, V, P, r0, r1, tau0_1, tau0_2, tauN_1, tauN_2, H, Ubar, g, fd_type,flux_type):
+    def impose_bc(self,hv, hp, v, p, y, rho, K, nx, dx, order, V, P, r0, r1, tau0_1, tau0_2, tauN_1, tauN_2, H, Ubar, g, type_0, fd_type,flux_type,bc_type_0, bc_type_N,forcing):
         # impose boundary conditions                                                                                                                         
         import numpy as np
         
@@ -94,35 +94,92 @@ class acoustic_sbp:
         #H = 1
         #g = 9.8
         #ubar= 0.5*np.sqrt(g*H)
-
+        U_data, P_data, U_t, V_t, U_x, V_x = 0*P, 0*P, 0*P, 0*P, 0*P,0*P
+        self.mms(U_data, P_data, U_t, V_t, U_x, V_x, y, 0, Ubar,type_0 ,nx)
         if flux_type == 'nonlinear':
          
-            flux_1_0 = v0**2/2 + g*p0 - (g*P0 + V0**2/2) #  du/dt
-            flux_2_0 =  v0 * p0  - ( V0 * P0) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
+            flux_1_0 = v0**2/2 + g*p0 - (g*P0 + V0**2/2) - (1-forcing)*(U_data[0]**2/2 + g*P_data[0]) #  du/dt
+            flux_2_0 =  v0 * p0  - ( V0 * P0) - (1-forcing)*(U_data[0]*P_data[0]) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
             
-            mv = flux_1_0 * 0
-            mp = flux_2_0 #*0
+            if bc_type_0 == 'mass flux': 
+                mv = flux_1_0 * 0
+                mp = flux_2_0 #*0
+                
+            if bc_type_0 == 'energy flux': 
+                mv = flux_1_0 #* 0
+                mp = flux_2_0 * 0
+                
+            if bc_type_0 == 'transmissive': 
+                alpha_0 = 2/(g*p0 - 0.5*v0**2)
+            
+                f2_data_0 =  -1/(g - v0*g/np.sqrt(g*p0))*((np.sqrt(g*p0) - v0/2)*flux_1_0)
+                mv = flux_1_0 * 0
+                mp = flux_2_0-f2_data_0
             
             
-            flux_1_n =   vn**2/2 + g*pn - (g*Pn + Vn**2/2)
-            flux_2_n =   vn * pn  - (Vn * Pn)#Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
+           
+            flux_1_n =   vn**2/2 + g*pn - (g*Pn + Vn**2/2) - (1-forcing)*(U_data[-1]**2/2 + g*P_data[-1])
+            flux_2_n =   vn * pn  - (Vn * Pn) - (1-forcing)*(U_data[-1]*P_data[-1]) #Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
             
-            pv = flux_1_n  * 0
-            pp = flux_2_n #*0
+            if bc_type_N == 'mass flux':
+                pv = flux_1_n  * 0
+                pp = flux_2_n #*0
+                
+            if bc_type_N == 'energy flux':
+                pv = flux_1_n # * 0
+                pp = flux_2_n *0
+                
+            if bc_type_N == 'transmissive':
+                alpha_n = 2/(g*pn - 0.5*vn**2)
+                wn = U_data[-1]-2*np.sqrt(g*P_data[-1])
+                f2_data_n =  1/(g + vn*g/np.sqrt(g*pn))*((np.sqrt(g*pn) + vn/2)*flux_1_n)
+                f1_data_n =  1/(np.sqrt(g*pn) + vn/2)*((g + vn*g/np.sqrt(g*pn))*flux_2_n)
+            
+                pv = (flux_1_n - f1_data_n ) * 0
+                pp = (flux_2_n - f2_data_n) #*0
 
         if flux_type == 'linear':
-            flux_1_0 = Ubar*v0 + g * p0 - (Ubar*V0 + g*P0) #  du/dt
-            flux_2_0 =  Ubar*p0 + H * v0  - ( Ubar*P0 + H*V0) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
+            flux_1_0 = Ubar*v0 + g * p0 - (Ubar*V0 + g*P0) - (1-forcing)*(Ubar*U_data[0] + g*P_data[0]) #  du/dt
+            flux_2_0 =  Ubar*p0 + H * v0  - ( Ubar*P0 + H*V0) - (1-forcing)*(Ubar*P_data[0] + H*U_data[0]) #Ubar*v0 + g*p0 #- (Ubar*V0 + g*P0) #dh/dt
             
-            mv = flux_1_0  * 0
-            mp = flux_2_0 #* 0 
+            if bc_type_0 == 'mass flux': 
+                mv = flux_1_0 * 0
+                mp = flux_2_0 #*0
+                
+            if bc_type_0 == 'energy flux': 
+                mv = flux_1_0 #* 0
+                mp = flux_2_0 * 0
+                
+            if bc_type_0 == 'transmissive': 
+                
+                f2_data_0 =  -np.sqrt(H/g)*flux_1_0
+                f1_data_0 =  -np.sqrt(g/H)*flux_2_0
+                mv = (flux_1_0- f1_data_0)* 0
+                mp = flux_2_0-f2_data_0
+            #mv = flux_1_0  * 0
+            #mp = flux_2_0 #* 0 
             
           # Ubar*h + H*v 
-            flux_1_n =   Ubar*vn + g * pn - (Ubar*Vn + g*Pn)
-            flux_2_n =   Ubar*pn + H * vn  - ( Ubar*Pn + H*Vn)#Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
+            flux_1_n =   Ubar*vn + g * pn - (Ubar*Vn + g*Pn) - (1-forcing)*(Ubar*U_data[-1] + g*P_data[-1])
+            flux_2_n =   Ubar*pn + H * vn  - (Ubar*Pn + H*Vn) - (1-forcing)*(Ubar*P_data[-1] + H*U_data[-1])#Ubar*vn + g*pn #- (Ubar*Vn + g*Pn)
             
-            pv = flux_1_n * 0
-            pp = flux_2_n #* 0 #* 0 
+            if bc_type_N == 'mass flux':
+                pv = flux_1_n  * 0
+                pp = flux_2_n #*0
+                
+            if bc_type_N == 'energy flux':
+                pv = flux_1_n # * 0
+                pp = flux_2_n *0
+                
+            if bc_type_N == 'transmissive':
+                
+                f2_data_n =  np.sqrt(H/g)*flux_1_n
+                f1_data_n =  np.sqrt(g/H)*flux_2_n
+            
+                pv = (flux_1_n - f1_data_n ) * 0
+                pp = (flux_2_n - f2_data_n) #*0
+            #pv = flux_1_n * 0
+            #pp = flux_2_n #* 0 #* 0 
              
 
 
@@ -285,7 +342,7 @@ class acoustic_sbp:
         
         
     
-    def acoustic_rate(self,hv, hp, v, h, rho, K, nx, dx, order, t, y, r0, r1, tau0_1,tau0_2,tauN_1,tauN_2, type_0, forcing, H, Ubar, g, fd_type,flux_type,topography,hyperviscosity):
+    def acoustic_rate(self,hv, hp, v, h, rho, K, nx, dx, order, t, y, r0, r1, tau0_1,tau0_2,tauN_1,tauN_2, type_0, forcing, H, Ubar, g,bc_type_0, bc_type_N, fd_type,flux_type,topography,hyperviscosity):
 # we compute rates that will be used for Runge-Kutta time-stepping
 # 
         from dpsbp_operators_correct import dxd_m_DP, dxd_p_DP
@@ -505,11 +562,11 @@ class acoustic_sbp:
             
             u_xx = tophat * u_xx
             h_xx = tophat * h_xx
-            h_xx[0,0] = h_xx[0,0] + 0.5/h11[:]*h_x[0,0] * tophat[0]
-            h_xx[-1,0] =  h_xx[-1,0] - 0.5/h11[:]*h_x[-1,0] * tophat[-1]
+            h_xx[0,0] = h_xx[0,0] + 0.0/h11[:]*h_x[0,0] * tophat[0]
+            h_xx[-1,0] =  h_xx[-1,0] - 0.0/h11[:]*h_x[-1,0] * tophat[-1]
             
-            u_xx[0,0] =  u_xx[0,0] + 0.5/h11[:]*u_x[0,0]* tophat[0]
-            u_xx[-1,0] =  u_xx[-1,0] - 0.5/h11[:]*u_x[-1,0]* tophat[-1]
+            u_xx[0,0] =  u_xx[0,0] + 0.0/h11[:]*u_x[0,0]* tophat[0]
+            u_xx[-1,0] =  u_xx[-1,0] - 0.0/h11[:]*u_x[-1,0]* tophat[-1]
             
             dxd_p(u_xxx, u_xx, nx, dx, order)
             dxd_m(h_xxx, h_xx, nx, dx, order)
@@ -523,11 +580,11 @@ class acoustic_sbp:
             dxd_m(u_xxxx, u_xxx, nx, dx, order)
             dxd_p(h_xxxx, h_xxx, nx, dx, order)
             
-            h_xxxx[0,0] =  h_xxxx[0,0] + 0.5/h11[:]*h_xxx[0,0]
-            h_xxxx[-1,0] =  h_xxxx[-1,0] - 0.5/h11[:]*h_xxx[-1,0]
+            h_xxxx[0,0] =  h_xxxx[0,0] + 0.0/h11[:]*h_xxx[0,0]
+            h_xxxx[-1,0] =  h_xxxx[-1,0] - 0.0/h11[:]*h_xxx[-1,0]
             
-            u_xxxx[0,0] =  u_xxxx[0,0] + 0.5/h11[:]*u_xxx[0,0]
-            u_xxxx[-1,0] =  u_xxxx[-1,0] - 0.5/h11[:]*u_xxx[-1,0]
+            u_xxxx[0,0] =  u_xxxx[0,0] + 0.0/h11[:]*u_xxx[0,0]
+            u_xxxx[-1,0] =  u_xxxx[-1,0] - 0.0/h11[:]*u_xxx[-1,0]
             
             dxd_p(u_xxxxx, u_xxxx, nx, dx, order)
             dxd_m(h_xxxxx, h_xxxx, nx, dx, order)
@@ -597,7 +654,7 @@ class acoustic_sbp:
         
         if fd_type == 'DRP' or fd_type == 'DP' or fd_type == 'SBP':
             # impose boundary conditions using penalty: SAT
-            self.impose_bc(hv, hp, v, h, rho, K, nx, dx, order, forcing*U, forcing*P, r0, r1, tau0_1, tau0_2, tauN_1, tauN_2, H, Ubar, g, fd_type,flux_type)
+            self.impose_bc(hv, hp, v, h, y, rho, K, nx, dx, order, forcing*U, forcing*P, r0, r1, tau0_1, tau0_2, tauN_1, tauN_2, H, Ubar, g, type_0, fd_type,flux_type,bc_type_0, bc_type_N,forcing)
               
         
 
