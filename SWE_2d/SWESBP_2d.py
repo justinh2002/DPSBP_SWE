@@ -1,4 +1,6 @@
 import numpy as np
+from scipy.special import hyp2f1
+
 
 class SWE_SBP:
     
@@ -53,37 +55,103 @@ class SWE_SBP:
             V_x[:,:] =  -V*2*(y -x0 -  cs*t)/1 #10 * (-2*np.pi) * (np.exp(-( cs*(t))**2/(0.3)))*np.sin(2*np.pi*y)
             P_x[:,:] =  V_x#
             
+        elif type_0 in ('KH_Peixoto'):
+                    g = 9.81/1000    
+                    H = 10         
+                    mask_hl= np.logical_and(0< y, y < 5)
+                    mask_hr = np.logical_and(5< y, y < 10)
+                    psi = np.zeros((nx,ny))
+                    psi_x = np.zeros((nx,ny))
+                    psi_y = np.zeros((nx,ny))            
+                    f = 2 * 7.292e-5
+                    w0 = 1
+                    sigma = 1
+                    k = 1000
+                    n = 81
+                    def sech(x):
+                        return 1/np.cosh(x)            
+                    for i in np.arange(nx):
+                        for j in np.arange(ny):
+                            # if y[i,j] >= 2e7:
+                            U[i,j] = 50 * np.sin(2*np.pi * y[i,j]/4e5) ** 81
+                            P[i,j] =  H -f/g * 50 * -np.cos(2*np.pi*y[i,j]/4e5) * hyp2f1(1/2, (1 - n)/2, 3/2, np.cos(y[i,j]*2*np.pi/4e5)**2) #* np.sum(U[i,j]*y[i,j])# 0.1* f/(1e-6*g) * 1e-6 * sech(1e-6* (y[i,j] - 3e7))  ** 2
+                            P[i,j] += 0.01 * H * np.exp(-k * ((x[i,j] - 0.85*4e5)** 2/4e5**2 + (y[i,j] - 0.75* 4e5) ** 2/4e5**2) + np.exp(-k * ((x[i,j] - 0.15*4e5)** 2/4e5**2 + (y[i,j] - 0.25* 4e5) ** 2)/4e5**2)) #H+ 0.1* f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-3e7))
+                            V[i,j] = 0
+                                #P[i,j] += 20 * H * np.exp(-((x[i,j]** 2 + (y[i,j] - 0.95 * 3e7) ** 2) / (5_000_000 ** 2) ))
+                            # elif y[i,j] < 2e7:
+                            #     P[i,j] = H  -0.1 * f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-1e7))
+                            #     U[i,j] = -  0.1 * f/(1e-6*g) * 1e-6* sech(1e-6 * (y[i,j]- 1e7)) **2 
+                            #     V[i,j] = 0.
+                            #     #P[i,j] += w
+            
         elif type_0 in ('KH'):
-            # domain size is [-xlim, xlim] x [-ylim, ylim]
-            xlim = 20_000_000
-            ylim = 20_000_000
-            # centre shear here
-            yc = 10_000_000
-            # atmosphere-ish parameters
-            f = 2 * 7.292e-5
-            H = 10_000
-            g = 10
-            # initial max windspeed
-            mag = 50.0
-            wv = 1 / 1_000_000
+                    g = 9.81    
+                    H = 1         
+                    mask_hl= np.logical_and(0< y, y < 5)
+                    mask_hr = np.logical_and(5< y, y < 10)
+                    psi = np.zeros((nx,ny))
+                    psi_x = np.zeros((nx,ny))
+                    psi_y = np.zeros((nx,ny))            
+                    f = 2 * 7.292e-5
+                    w0 = 1
+                    sigma = 1
+                    
+                    def sech(x):
+                        return 1/np.cosh(x)            
+                    for i in np.arange(nx):
+                        for j in np.arange(ny):
+                            if y[i,j] >= 2e7:
+                                U[i,j] = 0.1* f/(1e-6*g) * 1e-6 * sech(1e-6* (y[i,j] - 3e7))  ** 2
+                                P[i,j] = H+ 0.1* f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-3e7))
+                                V[i,j] = 0.
+                                P[i,j] += 20 * H * np.exp(-((x[i,j]** 2 + (y[i,j] - 0.95 * 3e7) ** 2) / (5_000_000 ** 2) ))
+                            elif y[i,j] < 2e7:
+                                P[i,j] = H  -0.1 * f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-1e7))
+                                U[i,j] = -  0.1 * f/(1e-6*g) * 1e-6* sech(1e-6 * (y[i,j]- 1e7)) **2 
+                                V[i,j] = 0.
+                                #P[i,j] += w0 * np.sin(4*np.pi*x[i,j]) * np.exp(-()) ** 2) 
+                                
+        elif type_0 in ('KH_Euler'):
+            
+                    g = 9.81    
+                    H = 1         
+                    mask_hl= np.logical_and(0< y, y < 5)
+                    mask_hr = np.logical_and(5< y, y < 10)
+                    psi = np.zeros((nx,ny))
+                    psi_x = np.zeros((nx,ny))
+                    psi_y = np.zeros((nx,ny))            
+                    f = 2 * 7.292e-5
+                    sigma = 0.05/np.sqrt(2.)
+                    w0 = 0.1
 
-            #initial condition:
-
-            #def initial_condition(xs, ys, mag=1.0):
-            def sech(x):
-                return 1 / np.cosh(x)
-
-            neg_mask = (y < 0).astype(y.dtype)
-            pos_mask = (y > 0).astype(y.dtype)
-            U = -pos_mask * mag * sech(wv * (y +4e4- yc)) ** 2
-            U += neg_mask * mag * sech(wv * (y +2e4 + yc)) ** 2
-
-            P = pos_mask * (mag / wv) * np.tanh(wv * (y - yc)) * (f / g)
-            P += -neg_mask * (mag / wv) * np.tanh(wv * (y + yc)) * (f / g)
-            #print(h.max(), h.min())
-            P += H
-            V = np.zeros_like(U)
-
+	# rho = 1. + (np.abs(Y-0.5) < 0.25)
+	# vx = -0.5 + (np.abs(Y-0.5)<0.25)
+	# vy = w0*np.sin(4*np.pi*X) * ( np.exp(-(Y-0.25)**2/(2 * sigma**2)) + np.exp(-(Y-0.75)**2/(2*sigma**2)) )
+	# P = 2.5 * np.ones(X.shape)
+                    
+                    def sech(x):
+                        return 1/np.cosh(x)            
+                    for i in np.arange(nx):
+                        for j in np.arange(ny):
+                            if y[i,j] >= 2e7:
+                                U[i,j] = 1 + np.abs(y[i,j] -1e7)#H = np.abs(y[i,j] - 3e7) # 100 *f/(1e-6*g) * 1e-6 * sech(1e-6* (y[i,j] - 3e7))  ** 2
+                                P[i,j] = H +  np.abs(y[i,j] - 3e7)#H + np.abs(y[i,j] - 3e7)#  H+ 100 *f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-3e7))
+                                V[i,j] = 0
+                            elif y[i,j] < 2e7:
+                                P[i,j] = H + np.abs(y[i,j] -1e7)#H  - 100 *f/(1e-6*g) * np.tanh(1e-6 * (y[i,j]-1e7))
+                                U[i,j] = 1 + np.abs(y[i,j] -1e7) #- 100 *f/(1e-6*g) * 1e-6* sech(1e-6 * (y[i,j]- 1e7)) **2 
+                                V[i,j] = 0 
+                            P[i,j] += w0 * np.sin(4*np.pi*x[i,j]) * np.exp(-(y[i,j]/(2*sigma)) ** 2) 
+                    # psi = -g/f * P
+                    # dyd_m_SBP_periodic(psi_y, psi,ny,dy,order)
+                    # dxd_m_SBP_periodic(psi_x,psi, nx,dx,order)
+                    # U = psi_y
+                    # V = -psi_x   #(edited)
+        elif type_0 in ('double_Gaussian'):
+            
+            
+            psi = np.exp(-2.5*((x-np.pi) **2 + (y-2*np.pi/3) ** 2) ) + np.exp(-2.5*((x-np.pi)**2 - (y-4*np.pi/3) ** 2))  #10*np.pi#         
+            
                 
             
             # g = 9.81
@@ -118,7 +186,7 @@ class SWE_SBP:
     #         from dpsbp_operators_correct import dxd_m_DP, dxd_p_DP
     #         from DRP_FD import dxd_m_DRP, dxd_p_DRP
     #         from DRP_FD_periodic import dxd_m_DRP_periodic, dxd_p_DRP_periodic
-    #         from dpsbp_operators_periodic import dxd_m_DP_periodic, dxd_p_DP_periodic
+            from dpsbp_operators_periodic import dxd_m_DP_periodic, dxd_p_DP_periodic, dyd_m_DP_periodic, dyd_p_DP_periodic
             from sbp_operators_periodic import dxd_m_SBP_periodic,dyd_m_SBP_periodic
             # from sbp_operators import dxd_m_SBP
 
@@ -145,8 +213,14 @@ class SWE_SBP:
             Px = np.zeros((nx, ny))
             
 
-            uy = np.zeros((nx,ny))
-            vx = np.zeros((nx,ny))
+            uyp = np.zeros((nx,ny))
+            vxp = np.zeros((nx,ny))
+            uym = np.zeros((nx,ny))
+            vxm = np.zeros((nx,ny))            
+            
+            #p = np.zeros((nx,ny))
+            u_x = np.zeros((nx,ny))
+            
             
             
                     
@@ -222,41 +296,59 @@ class SWE_SBP:
             #     dxd_p = dxd_p_DP_periodic
             
            # if fd_type == 'SBP_periodic':
-            dxd_m = dxd_m_SBP_periodic
-            dxd_p = dxd_m
-            dyd_m = dyd_m_SBP_periodic
-            
-
-            
+            dxd_m = dxd_m_DP_periodic#dxd_m_SBP_periodic#dxd_m_SBP_periodic
+            dxd_p = dxd_p_DP_periodic# dxd_p_DP_periodic#dxd_m_SBP_periodic #dxd_m
+            dyd_m = dyd_m_DP_periodic#dyd_m_SBP_periodic#dyd_m_DP_periodic
+            dyd_p = dyd_p_DP_periodic#dyd_m_SBP_periodic
+                        
             
             dxd_m(flux_hx_x, flux_hx, nx,dx, order)
             dyd_m(flux_hy_y, flux_hy, ny,dy, order)
-            dxd_m(flux_u_x, flux_u, nx, dx, order)
-            dyd_m(flux_u_y, flux_u,  ny,dy, order)
+            dxd_p(flux_u_x, flux_u, nx, dx, order)
+            dyd_p(flux_u_y, flux_u,  ny,dy, order)
+                          
+            # dxd_p(u_x, v, nx, dx, order)
+            # dxd_m(h_x, h, nx, dx, order)
+            # dxd_p(u_x, v, nx, dx, order)    
             
-              
+            # dxd_m(u_xx, u_x, nx, dx, order)
+            # dxd_p(h_xx, h_x, nx, dx, order)
             
-                  
+            # dxd_p(u_xxx, u_xx, nx, dx, order)
+            # dxd_m(h_xxx, h_xx, nx, dx, order)
             
-                    
-            hu[:,:] = -flux_u_x
-            hv[:,:] = -flux_u_y    #- g * 0 * bx
+            # dxd_m(u_xxxx, u_xxx, nx, dx, order)
+            # dxd_p(h_xxxx, h_xxx, nx, dx, order)   
+              #10percent of the domain length 
+    #   # Ubar*h + H*v 
+    #     #forcing = 1
+    #     if flux_type == 'linear':
+    #         forcing_term_1 = Ubar * Ux + g * Px
+    #         forcing_term_2 = Ubar * Px + H * Ux
+
+    #     if flux_type == 'nonlinear':
+    #         forcing_term_1 = U*Ux + g*Px
+    #         forcing_term_2 =  Px * U + Ux* P
+                                          #e
+                                                        
+            hu[:,:] = -flux_u_x 
+            hv[:,:] = -flux_u_y
             hp[:,:] = -flux_hx_x - flux_hy_y 
             
-            
-            
+                        
             if vorticity == 'true':
                 f = 2 * 7.292e-5
                 
-                dyd_m(uy, u,ny,dy,order)
-                dxd_m(vx,v, nx,dx,order)
+                dyd_p(uyp,u,ny,dy,order) 
+                dxd_p(vxp,v, nx,dx,order)
+                dyd_m(uym,u,ny,dy,order) 
+                dxd_m(vxm,v, nx,dx,order)
                 
-                vort = (uy - vx + f) 
-                hu = hu + vort * v
-                hv = hv - vort *  u
+                vx = 0.5* (2*vxp + 0*vxm)
+                uy = 0.5 * (2*uyp + 0 *uym)
                 
-        
-            
-
-    
+                vort = (vx  -  uy  + f) 
+                hu +=  vort * v
+                hv -=  vort * u
+                                        
     
