@@ -37,6 +37,14 @@ def dxd_p_DP_periodic(ux,u,nx,dx,order): #for p this is D+
         
             
         ux[:,:]=ux/dx
+    
+    if order == 5:
+        m = nx - 1
+        for i in range (nx): #for D 
+            ux[i,:] = 1./20 * u[(i-2)%m,:] - 1./2 * u[(i-1)%m,:] - 1./3 * u[i%m,:] +  u[(i+1)%m,:] - 1./4 * u[(i+2)%m,:]  + 1./30 * u[(i+3)%m,:]
+            #ux[i,:] = -1./20 * u[i-4,:] + 1./2 * u[i-3,:] + 1./3 * u[i-2,:] -  u[i-1,:] +1./4 * u[i,:] - 1./30 * u[i+1,:]
+        ux[:,:] = ux/dx         
+
         
     if order ==6:# Dp
             #
@@ -116,7 +124,12 @@ def dxd_m_DP_periodic(ux, u, nx, dx, order): # for v this is D-
         ux[:,:]=ux/dx
 
         
-
+    if order == 5: #Dm
+        m = nx - 1
+        for i in range(nx):
+            ux[i,:] = - 1./30 * u[(i-3)%m,:] +1./4 * u[(i-2)%m,:] -  u[(i-1)%m,:]+ 1./3 * u[i%m,:] + 1./2 * u[(i+1)%m,:]   -1./20 * u[(i+2)%m,:] 
+           # ux[i,:] = 1./20 * u[i-2,:] - 1./2 * u[i-1,:] - 1./3 * u[i,:] +  u[i+1,:] - 1./4 * u[i+2,:]  + 1./30 * u[i+3,:]
+        ux[:,:] = ux/dx
     # sixth order accurate case        
     ################################################# 
 
@@ -201,7 +214,12 @@ def dyd_m_DP_periodic(ux, u, nx, dx, order): # for v this is D-
             
         ux[:,:]=ux/dx
 
-        
+    if order == 5: #Dm
+        m = nx - 1
+        for i in range(nx):
+            ux[:,i] = - 1./30 * u[:,(i-3)%m] +1./4 * u[:,(i-2)%m] -  u[:,(i-1)%m]+ 1./3 * u[:,i%m] + 1./2 * u[:,(i+1)%m]   -1./20 * u[:,(i+2)%m] 
+           # ux[i,:] = 1./20 * u[i-2,:] - 1./2 * u[i-1,:] - 1./3 * u[i,:] +  u[i+1,:] - 1./4 * u[i+2,:]  + 1./30 * u[i+3,:]
+        ux[:,:] = ux/dx    
 
     # sixth order accurate case        
     ################################################# 
@@ -269,6 +287,13 @@ def dyd_p_DP_periodic(ux,u,nx,dx,order): #for p this is D+
             ux[:,i] = (-1./4*u[:,(i-1)%m]  -5/6*u[:,i%m]  +    3./2*u[:,(i+1)%m]   -1./2*u[:,(i+2)%m] +     5./60 *u[:,(i+3)%m])
             #ux[i,:] = (-1/4 *u[i-1,:]  -5/6*u[i,:]  +    3/2*u[i+1,:]   -1/2*u[i+2,:] +     5/60 *u[i+3,:])
         ux[:,:]=ux/dx
+        
+    if order == 5:
+        m = nx - 1
+        for i in range (nx): #for Dp
+            ux[:,i] = 1./20 * u[:,(i-2)%m] - 1./2 * u[:,(i-1)%m] - 1./3 * u[:,i%m] +  u[:,(i+1)%m] - 1./4 * u[:,(i+2)%m]  + 1./30 * u[:,(i+3)%m]
+            #ux[i,:] = -1./20 * u[i-4,:] + 1./2 * u[i-3,:] + 1./3 * u[i-2,:] -  u[i-1,:] +1./4 * u[i,:] - 1./30 * u[i+1,:]
+        ux[:,:] = ux/dx  
         
     if order ==6:# Dp
         m = nx - 1

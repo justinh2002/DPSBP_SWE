@@ -31,7 +31,7 @@ def acoustic_RK4(self,ru, rv, rp,u, v, p, rho, K, nx,ny, dx,dy, order, x, y, t, 
 
         self.acoustic_rate(k1u,k1v, k1p,u, v, p, rho, K, nx,ny, dx,dy, order, t,x, y,  type_0, Ubar,Vbar,H,g,flux_type,vorticity)
        # def acoustic_rate(self,hu,hv, hp,u, v, h, rho, K, nx, ny,dx,dy, order, t, x,y, type_0, Ubar,Vbar,H, g):
-        energy =  ((p*(u**2+v**2) /2  + g * p**2).sum())
+        energy =  ((p*(u**2+v**2) /2  + g * p**2).sum()) * dx * dy
                 
         energy_t = np.sum(u * p * k1u +  v * p * k1v +  (1/2 * (u ** 2+v**2)  +  g * p) * k1p)/energy
         #print(energy_t)       
