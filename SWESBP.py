@@ -1,19 +1,21 @@
 '''Shallow water wave solver'''
 """Author: Justin Kin Jun Hew"""
+import numpy as np
 class acoustic_sbp:
     
     
     def __init__(self):
         import numpy as np
         self.ndim     = 1 # the dimensionality (1,2)
-        self.ncells   = np.array([500]) # number of cells (2D)
+        self.ncells   = 101 # number of cells (2D)
         self.scheme   = "sbp" # sbp
         self.boundary = "non-periodic" # boundary condition
         self.cfl      = 0.8 # CFL safety factor
         self.nend     = 100 # number of timesteps
         self.tmax     = 1e10 # end time
-        self.dx       = 1.0 # cell size x
+        self.dx       = 1/(self.ncells-1) # cell size x
         self.dy       = 1.0 # cell size y
+        #self.y = np.linspace(0, self.ncells * self.dx, self.ncells) 
         
         
     def penaltyweight(h11, dx, order):
@@ -111,10 +113,13 @@ class acoustic_sbp:
                 
             if bc_type_0 == 'transmissive': 
                 alpha_0 = 2/(g*p0 - 0.5*v0**2)
+                #f2_data_0 =  -np.sqrt(p0/g)*flux_1_0
+                #f1_data_0 =  -np.sqrt(g/p0)*flux_2_0
+                f2_data_0 =  -np.sqrt(p0/g)*  ( np.sqrt(g*p0) -  v0/2 )/( np.sqrt(g*p0) - v0 )* flux_1_0
             
-                f2_data_0 =  -1/(g - v0*g/np.sqrt(g*p0))*((np.sqrt(g*p0) - v0/2)*flux_1_0)
-                mv = flux_1_0 * 0
-                mp = flux_2_0-f2_data_0
+                f1_data_0 =   np.sqrt(g/p0) * (1 - v0/np.sqrt(g*p0))/(1 - v0/2 * np.sqrt(g*p0)) * flux_2_0# -1/(g - v0*g/np.sqrt(g*p0))*((np.sqrt(g*p0) - v0/2)*flux_1_0)
+                mv = (flux_1_0 - f1_data_0)*0
+                mp = (flux_2_0 -f2_data_0) #* 0 
             
             
            
@@ -132,8 +137,12 @@ class acoustic_sbp:
             if bc_type_N == 'transmissive':
                 alpha_n = 2/(g*pn - 0.5*vn**2)
                 wn = U_data[-1]-2*np.sqrt(g*P_data[-1])
-                f2_data_n =  1/(g + vn*g/np.sqrt(g*pn))*((np.sqrt(g*pn) + vn/2)*flux_1_n)
-                f1_data_n =  1/(np.sqrt(g*pn) + vn/2)*((g + vn*g/np.sqrt(g*pn))*flux_2_n)
+                #f2_data_n =  1/(g + vn*g/np.sqrt(g*pn))*((np.sqrt(g*pn) + vn/2)*flux_1_n)
+                #f1_data_n =  1/(np.sqrt(g*pn) + vn/2)*((g + vn*g/np.sqrt(g*pn))*flux_2_n)
+                f2_data_n =  np.sqrt(pn/g)*  ( np.sqrt(g*pn) +  vn/2 )/( np.sqrt(g*pn) + vn )* flux_1_n
+                f1_data_n =   np.sqrt(g/p0) * (1 + v0/np.sqrt(g*p0))/(1 + v0/2 * np.sqrt(g*p0)) * flux_2_n
+                #f2_data_n =  np.sqrt(pn/g)*flux_1_n
+                #f1_data_n =  np.sqrt(g/pn)*flux_2_n
             
                 pv = (flux_1_n - f1_data_n ) * 0
                 pp = (flux_2_n - f2_data_n) #*0
@@ -268,7 +277,7 @@ class acoustic_sbp:
             
             #V_x[:,:] = 0.0
             #P_x[:,:] = 0.0
-        if type_0 in ('Lake_At_Rest'):
+        if type_0 in ('Lake_At_Rest_Non_Smooth'):
             b = 0 * y
             V = 0 * y
             
@@ -276,8 +285,39 @@ class acoustic_sbp:
             b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
             #P[:,:] = 0.5
             
-            P[:,:] =  0.5 - b  # h + b
-            #V[:,:] = 0.0000000000000000 
+            P[:,:] =  0.5 - b # + 0.1 * b # h + b
+            #V[:,:] = 0.0000000000000000                   
+        elif type_0 in ('Lake_At_Rest_Smooth'):
+            b = 0 * y
+            V = 0 * y
+            
+            
+            
+            #mask_b = np.logical_and(8 < y, y < 12)
+            b = 0.1 * np.exp(-(y - 10)**2/0.3)
+            #b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
+            #P[:,:] = 0.5
+            
+            P[:,:] =  0.5 - b + b * 0.1  # h + b
+            #V[:,:] = 0.0000000000000000
+        elif type_0 in ('Lake_at_rest_new'):
+            b = 0 * y
+            V = 0 * y
+            
+            mask_b = np.logical_and(8 < y, y < 12)
+            b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
+            
+            
+            #mask_b = np.logical_and(8 < y, y < 12)
+            gaussian = 0.1 * np.exp(-(y - 10)**2/0.3)
+            #b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
+            #P[:,:] = 0.5
+            
+            P[:,:] =  0.5 - b + gaussian * 0.1  # h + b
+
+        if type_0 in ('empty'):
+            P[:,:] = P[:,:]
+            V[:,:] = V[:,:]
             
         # if type_0 in ('Dam_Break_Dry'):
         #     h = nx/(y[-1,0] - y[0,0]) #get number of cells per 1 L of domain
@@ -288,7 +328,7 @@ class acoustic_sbp:
         #     P[position_break:,:] = 0.01#0.0000000000000001
         #     #V_t[:,:] = 0.0
         #     #P_t[:,:] = 0.0
-        #      #this does not work
+        #      #this does not work  # dry bed does not work
         #     #V_x[:,:] = 0.0 
             
 
@@ -331,16 +371,105 @@ class acoustic_sbp:
         pv[:] = Bn
         pp[:] = Bn
         
-    def f_v(x,t,v):
+    def f_v(y,t,v):
         return np.cos(2* np.pi *t) * np.sin(5 * np.pi *y/10 + 5)#np.cos(ntv * t)*np.sin(nyv *y + fs)
 
-    def p_v(x,t,v):#np.cos(ntv * t)*np.sin(nyv *y + fs)
+    def p_v(y,t,v):#np.cos(ntv * t)*np.sin(nyv *y + fs)
         return np.sin(3*np.pi *t) * np.sin(10 * np.pi *y / 10  + 5)
     
-    
+    def rhs(self, v, h, y, nx, dx, order, t, Ubar, g, forcing, flux_type, fd_type, topography, bc, H):
 
+        v = v.reshape(nx, 1)
+        h = h.reshape(nx, 1)
         
+        U_t = np.zeros((nx,1))
+        V_t = np.zeros((nx,1))
+        U_x = np.zeros((nx,1))
+        V_x = np.zeros((nx,1))
+        type_0 = 'empty'
+
+        hv = np.zeros((nx, 1))  # Initialize hv as (nx, 1)
+        hp = np.zeros((nx, 1))  # Initialize hp as (nx, 1)
+        y = np.zeros((nx, 1))
+
+        # Initial particle velocity perturbation and discretize the domain
+        for j in range(0, nx):
+            y[j, :] = j*dx                                             # discrete domain
+
+        self.mms(v, h, U_t, V_t, U_x, V_x, y, t, Ubar,type_0,nx)
+
+        self.acoustic_rate(
+            hv, hp, v, h, 1.0, 1.0, nx, dx, order, t, y, 1, 1, 1, 1, 1, 1, 'empty',
+            forcing, H, Ubar, g, bc, bc, fd_type, flux_type, topography, hyperviscosity= "on_periodic"
+        )
+    
         
+        print('v is:',v)
+        # print('h is:', H)
+
+        # Return the combined rate of change vector, reshaped into a single vector (2*nx,)
+        return np.concatenate((hv.flatten(), hp.flatten()))
+
+    def compute_jacobian(self, H, V, bc, epsilon=1e-16):
+        """
+        Compute the Jacobian matrix for the given background state H (height) and V (velocity)
+        using finite differences.
+        """
+        # # Ensure H and V are 2D arrays of shape (nx, 1)
+        # H = H.reshape(self.ncells, 1)
+        # V = V.reshape(self.ncells, 1)
+
+
+        U = np.concatenate((H.flatten(), V.flatten()))
+        
+
+        n = len(U)
+
+
+        A = np.zeros((n, n))
+
+
+        for j in range(n):
+            e_j = np.zeros(n)
+            e_j[j] = 1
+
+            U_plus = U + epsilon * e_j
+            U_minus = U - epsilon * e_j
+
+
+            h_plus, v_plus = np.split(U_plus, 2)
+            h_minus, v_minus = np.split(U_minus, 2)
+            # print(h_plus,v_plus)
+            # print(h_minus,v_minus)
+            # h_plus = h_plus.reshape(-1, 1)
+            # v_plus = v_plus.reshape(-1, 1)
+            # h_minus = h_minus.reshape(-1, 1)
+            # v_minus = v_minus.reshape(-1, 1)
+            nx = self.ncells
+            dx = 1/(nx - 1)
+            y = np.zeros((nx, 1))
+
+            # Initial particle velocity perturbation and discretize the domain
+            for j in range(0, nx):
+                y[j, :] = j*dx     
+
+
+            rhs_plus = self.rhs(v_plus, h_plus, y, nx, dx, order = 6, t=0., Ubar=1, g=9.81, forcing=0, flux_type="nonlinear", fd_type="DP", topography="off", bc = bc, H=H)
+            rhs_minus = self.rhs(v_minus, h_minus, y, nx, dx, order = 6, t=0., Ubar=1, g=9.81, forcing=0, flux_type="nonlinear", fd_type="DP", topography="off", bc = bc ,H=H)
+
+            # Compute the finite difference approximation for the j-th column of the Jacobian
+            A[:, j] = (rhs_plus - rhs_minus) / (2 * epsilon)* dx
+            print(rhs_plus - rhs_minus)
+
+        return A
+
+
+
+
+
+
+
+            
     
     def acoustic_rate(self,hv, hp, v, h, rho, K, nx, dx, order, t, y, r0, r1, tau0_1,tau0_2,tauN_1,tauN_2, type_0, forcing, H, Ubar, g,bc_type_0, bc_type_N, fd_type,flux_type,topography,hyperviscosity):
 # we compute rates that will be used for Runge-Kutta time-stepping
@@ -370,19 +499,28 @@ class acoustic_sbp:
         Px = np.zeros((nx, 1))
         
         bx = np.zeros((nx,1))
-        b = 0 * y
         
-        if topography == 'yes':
+        b = 0 * y
+        if topography == 'non_smooth':
+            b = 0 * y
             bx = 0 * y
             mask_b = np.logical_and(8 < y, y < 12)
+            b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
+            
             bx[mask_b] = - 0.10 * (y[mask_b] - 10 )
             #mask_b = np.logical_and(8 < y, y < 12)
-            b[mask_b] = 0.2 - 0.05*(y[mask_b] - 10 )**2 
-            #mask_a = np.logical_and(12 <= y, y <= 8) 
+           
+            #mask_a = np.logical_and(12 <= y, y <= 8)
+
+        elif topography == 'smooth':
+            b = 0 * y
+            bx = 0 * y
+            b = 0.1 * np.exp( -(y-10)**2/0.3) 
+            bx = -2*b* ( y - 10) / 0.3
             
         else:
             bx = 0.0
-            b = 0
+            b = 0.
         
         self.mms(U, P, Ut,Pt, Ux, Px, y, t,Ubar, type_0,nx)
 
@@ -402,6 +540,7 @@ class acoustic_sbp:
         
         
         flux_2_x = np.zeros((nx,1))
+        
         
         if fd_type == 'DP':
             dxd_m = dxd_m_DP
@@ -562,11 +701,11 @@ class acoustic_sbp:
             
             u_xx = tophat * u_xx
             h_xx = tophat * h_xx
-            h_xx[0,0] = h_xx[0,0] + 0.0/h11[:]*h_x[0,0] * tophat[0]
-            h_xx[-1,0] =  h_xx[-1,0] - 0.0/h11[:]*h_x[-1,0] * tophat[-1]
+            h_xx[0,0] = h_xx[0,0] + 0.5/h11[:]*h_x[0,0] * tophat[0]
+            h_xx[-1,0] =  h_xx[-1,0] - 0.5/h11[:]*h_x[-1,0] * tophat[-1]
             
-            u_xx[0,0] =  u_xx[0,0] + 0.0/h11[:]*u_x[0,0]* tophat[0]
-            u_xx[-1,0] =  u_xx[-1,0] - 0.0/h11[:]*u_x[-1,0]* tophat[-1]
+            u_xx[0,0] =  u_xx[0,0] + 0.5/h11[:]*u_x[0,0]* tophat[0]
+            u_xx[-1,0] =  u_xx[-1,0] - 0.5/h11[:]*u_x[-1,0]* tophat[-1]
             
             dxd_p(u_xxx, u_xx, nx, dx, order)
             dxd_m(h_xxx, h_xx, nx, dx, order)
@@ -580,11 +719,11 @@ class acoustic_sbp:
             dxd_m(u_xxxx, u_xxx, nx, dx, order)
             dxd_p(h_xxxx, h_xxx, nx, dx, order)
             
-            h_xxxx[0,0] =  h_xxxx[0,0] + 0.0/h11[:]*h_xxx[0,0]
-            h_xxxx[-1,0] =  h_xxxx[-1,0] - 0.0/h11[:]*h_xxx[-1,0]
+            h_xxxx[0,0] =  h_xxxx[0,0] + 0.5/h11[:]*h_xxx[0,0]
+            h_xxxx[-1,0] =  h_xxxx[-1,0] - 0.5/h11[:]*h_xxx[-1,0]
             
-            u_xxxx[0,0] =  u_xxxx[0,0] + 0.0/h11[:]*u_xxx[0,0]
-            u_xxxx[-1,0] =  u_xxxx[-1,0] - 0.0/h11[:]*u_xxx[-1,0]
+            u_xxxx[0,0] =  u_xxxx[0,0] + 0.5/h11[:]*u_xxx[0,0]
+            u_xxxx[-1,0] =  u_xxxx[-1,0] - 0.5/h11[:]*u_xxx[-1,0]
             
             dxd_p(u_xxxxx, u_xxxx, nx, dx, order)
             dxd_m(h_xxxxx, h_xxxx, nx, dx, order)
@@ -644,10 +783,12 @@ class acoustic_sbp:
 
 
         hyper_factor = 0.1#.1#0.1#0.1# 1.0
-                
         
-        hv[:,:] = -flux_1_x + forcing*(Ut + forcing_term_1)  - hyper_factor*dx**3*Art*(w11*u_xxxx + w12*h_xxxx) #- g * 0 * bx
-        hp[:,:] = -flux_2_x + forcing*( Pt +  forcing_term_2 ) - hyper_factor*dx**3*Art*(w21*h_xxxx + w22*u_xxxx) 
+        hv[:,:] = -flux_1_x + forcing * (Ut + forcing_term_1) + hyper_factor * dx**5 * Art * (w11 * u_xxxxxx + w12 * h_xxxxxx) #- g  * bx
+        hp[:,:] = -flux_2_x + forcing * ( Pt +  forcing_term_2 ) + hyper_factor*dx**5*Art*(w21*h_xxxxxx + w22*u_xxxxxx) 
+            
+        # hv[:,:] = -flux_1_x + forcing*(Ut + forcing_term_1)  - hyper_factor*dx**3*Art*(w11*u_xxxx + w12*h_xxxx) - g  * bx
+        # hp[:,:] = -flux_2_x + forcing*( Pt +  forcing_term_2 ) - hyper_factor*dx**3*Art*(w21*h_xxxx + w22*u_xxxx) 
                
         # hv[:,:] = -flux_1_x + forcing*(Ut + forcing_term_1) - hyper_const*dx**3*u_xxxx
         # hp[:,:] = -flux_2_x + forcing*( Pt +  forcing_term_2 ) - hyper_const*dx**3*h_xxxx
